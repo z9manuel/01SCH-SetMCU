@@ -123,6 +123,7 @@ boolean iniciarMCU() {
 			okNET = 0;
 		}
 		delay(500);
+		int i = 0;
 		while (WiFi.status() != WL_CONNECTED) {
 			WiFi.disconnect();
 			Serial.println("Conectando a WiFi..");
@@ -130,7 +131,8 @@ boolean iniciarMCU() {
 			WiFi.begin(ssid, password);
 			if (!WiFi.config(local_IP, gateway, subnet, DNS1, DNS2))
 				Serial.println("Error al configurar IP...");
-			delay(500);
+			i == 9 ? ESP.restart() : delay(1000);
+			i++;
 		}
 		Serial.print("WiFi OK: ");
 		okNET = 1;
@@ -141,7 +143,7 @@ boolean iniciarMCU() {
 		DateTime.begin();
 		delay(500);
 		int intento = 0;
-		while (!DateTime.isTimeValid() && intento < 5) {
+		while (!DateTime.isTimeValid() && intento < 9) {
 			Serial.println("NTP Error!");
 			delay(500);
 			intento++;
@@ -155,6 +157,5 @@ boolean iniciarMCU() {
 		Serial.print("Tiempo: ");
 		Serial.println(DateTime.toString());
 	}
-
 	return okNET;
 }
