@@ -12,6 +12,8 @@
 #include <ArduinoJson.h>
 #include <DateTime.h>
 #include <WiFi.h>
+// Librerias para API
+#include <HTTPClient.h>
 
 #define SD_CS 5						// Define CS pin para modulo SD8
 
@@ -19,6 +21,10 @@ File schFile;
 boolean okSD = 0, okNET = 0;
 boolean error = 0;
 String servidorAPI;
+
+String carnicareia;
+byte tipo = 1;
+String tiempo = "";
 
 void setup() {
 	Serial.begin(115200);
@@ -32,6 +38,10 @@ void loop() {
 }
 
 boolean iniciarMCU() {
+	/*
+	Funcion responsable de realizar la configuración de red del MCU
+	Toma como parametros las variables de micro SD para autoconfigurar SSID, Contrasena, MAC, Direcionamiento IP y el NTP
+	*/
 	byte  ipA, ipB, ipC, ipD;
 	byte  gwA, gwB, gwC, gwD;
 	byte  msA, msB, msC, msD;
@@ -158,4 +168,94 @@ boolean iniciarMCU() {
 		Serial.println(DateTime.toString());
 	}
 	return okNET;
+}
+
+int enviar_a_API(String dato) {
+	/*
+	Funcion responsable de enviar paquetes formateados a servidor WebAPI mediante POST
+	Toma de los parametros globales la dirección del servidor WebAPI
+	Recibe como parametro una cadena de texto serializada en formato JSON
+	*/
+	boolean enviado = 0;
+	int intentos = 9;
+	String requestBody = dato;
+
+	while (!enviado || intentos > 0)
+	{
+		if (WiFi.status() == WL_CONNECTED) {
+
+			HTTPClient http;
+			http.begin(servidorAPI);
+			http.addHeader("Content-Type", "application/json");
+			int httpResponseCode = http.POST(requestBody);
+			delay(500);
+
+			if (httpResponseCode > 0) {
+				String response = http.getString();
+				Serial.println(httpResponseCode);
+				Serial.println(response);
+				http.end();
+				enviado = 1;
+				intentos = 0;
+				delay(1000);
+			}
+			else {
+				Serial.println("Error al enviar HTTP POST");
+				delay(500);
+				if (intentos > 1) {
+					Serial.println("Reintentando HTTP POST");
+					delay(500);
+					intentos--;
+				}
+				if (intentos == 1)
+				{
+					Serial.println("Almacenando en SD");
+					iniciarMCU();
+					intentos--;
+				}
+				http.end();
+			}
+		}
+		else {
+			Serial.println("WiFi no disponible!");
+			Serial.println("Error al enviar HTTP POST");
+			delay(500);
+			iniciarMCU();
+			delay(500);
+			intentos--;
+		}
+	}
+
+	return enviado ? 1 : 0;
+}
+
+String dato_a_JSON(String bfr_Tiempo[], float bfr_Temperatura[], int bfr_Humedad[]) {
+	/*
+	Funcion responsable de formatear los datos generados, modificar dependiendo de dispositivo
+	Toma como parametros los datos generales de indentificación de la carnicería
+	Y recibe como parametros los Buffers de tiempo, temperatura y humedad
+	No utilizar Buffers de mas de 30 elementos
+	*/
+	String requestBody;
+	delay(500);
+
+	DynamicJsonDocument paquete(4096);
+	StaticJsonDocument<1024> sensor;
+	JsonArray cuerpoDatos = paquete.createNestedArray("cuerpoDatos");
+
+	paquete["carniceria"] = carnicareia;
+	paquete["fecha"] = DateTime.toString();;
+	paquete["tipo"] = tipo;
+
+	for (int i = 0; i < 30; i++)
+	{
+		sensor["hora"] = bfr_Tiempo[i];
+		sensor["temperatura"] = bfr_Temperatura[i];
+		sensor["humedad"] = bfr_Humedad[i];
+		String cuerpo;
+		serializeJson(sensor, cuerpo);
+		cuerpoDatos.add(cuerpo);
+	}
+	serializeJson(paquete, requestBody);
+	return requestBody;
 }
