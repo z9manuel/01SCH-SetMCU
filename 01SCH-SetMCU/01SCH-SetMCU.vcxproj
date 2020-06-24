@@ -115,6 +115,9 @@
     <None Include="src\arduino folders read me.txt">
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="__vm\.01SCH-SetMCU.vsarduino.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

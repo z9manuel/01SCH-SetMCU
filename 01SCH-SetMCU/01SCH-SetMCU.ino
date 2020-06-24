@@ -15,7 +15,7 @@
 // Librerias para API
 #include <HTTPClient.h>
 
-#define SD_CS 5						// Define CS pin para modulo SD8
+#define SD_CS 5						// Define CS pin para modulo SD
 
 File schFile;
 boolean okSD = 0, okNET = 0;
